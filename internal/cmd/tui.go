@@ -11,7 +11,7 @@ import (
 	"github.com/stateful/runme/internal/document"
 )
 
-type TUIModel struct {
+type tuiModel struct {
 	blocks   document.CodeBlocks
 	cursor   *int
 	expanded map[int]struct{}
@@ -19,9 +19,9 @@ type TUIModel struct {
 	run      **document.CodeBlock
 }
 
-const TAB = "  "
+const tab = "  "
 
-func (m TUIModel) View() string {
+func (m tuiModel) View() string {
 	s := fmt.Sprintf(
 		"%s%s %s",
 		ansi.Color("run", "red+b"),
@@ -64,7 +64,7 @@ func (m TUIModel) View() string {
 		codeLines := block.Lines()
 
 		for i, codeLine := range codeLines {
-			content := TAB + TAB + codeLine
+			content := tab + tab + codeLine
 
 			if !expanded && len(codeLines) > 1 {
 				content += " (...)"
@@ -93,7 +93,7 @@ func (m TUIModel) View() string {
 				"Quit [^C]",
 				"  by Stateful",
 			},
-			TAB,
+			tab,
 		)
 
 		help = ansi.Color(help, "white+d")
@@ -104,10 +104,11 @@ func (m TUIModel) View() string {
 	return s
 }
 
-func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
+func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	keyMsg, isKeyPress := msg.(tea.KeyMsg)
+
+	if isKeyPress {
+		switch keyMsg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 
@@ -161,7 +162,7 @@ func tuiCmd(exitAfterRun *bool) *cobra.Command {
 			for {
 				block := (*document.CodeBlock)(nil)
 
-				model := TUIModel{
+				model := tuiModel{
 					blocks:   blocks,
 					version:  version,
 					expanded: make(map[int]struct{}),
@@ -175,7 +176,11 @@ func tuiCmd(exitAfterRun *bool) *cobra.Command {
 				}
 
 				if block != nil {
-					runBlockCmd(block, cmd, nil)
+					err := runBlockCmd(block, cmd, nil)
+
+					if err != nil {
+						return err
+					}
 				} else {
 					break
 				}
@@ -200,6 +205,6 @@ func tuiCmd(exitAfterRun *bool) *cobra.Command {
 	return &cmd
 }
 
-func (m TUIModel) Init() tea.Cmd {
+func (m tuiModel) Init() tea.Cmd {
 	return nil
 }
