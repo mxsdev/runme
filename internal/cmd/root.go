@@ -16,7 +16,8 @@ var (
 )
 
 func Root() *cobra.Command {
-  defaultCmd := tuiCmd()
+	exitAfterRun := false
+	defaultCmd := tuiCmd(&exitAfterRun)
 
 	cmd := cobra.Command{
 		Use:           "runme",
@@ -40,9 +41,9 @@ func Root() *cobra.Command {
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
-    RunE: func(cmd *cobra.Command, args []string) error {
-      return defaultCmd.RunE(cmd, args)
-    },
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return defaultCmd.RunE(cmd, args)
+		},
 	}
 
 	setDefaultFlags(&cmd)
@@ -53,7 +54,9 @@ func Root() *cobra.Command {
 	pflags.StringVar(&fChdir, "chdir", getCwd(), "Switch to a different working directory before exeucing the command.")
 	pflags.StringVar(&fFileName, "filename", "README.md", "A name of the README file.")
 
-  cmd.AddCommand(defaultCmd) // TUI
+	cmd.Flags().BoolVar(&exitAfterRun, "exit", false, "Exit runme TUI after running a command")
+
+	cmd.AddCommand(defaultCmd) // TUI
 	cmd.AddCommand(runCmd())
 	cmd.AddCommand(listCmd())
 	cmd.AddCommand(printCmd())

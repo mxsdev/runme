@@ -12,173 +12,194 @@ import (
 )
 
 type TUIModel struct {
-  blocks document.CodeBlocks
-  cursor int
-  expanded map[int]struct{}
-  version string
-  run **document.CodeBlock
+	blocks   document.CodeBlocks
+	cursor   *int
+	expanded map[int]struct{}
+	version  string
+	run      **document.CodeBlock
 }
 
 const TAB = "  "
 
 func (m TUIModel) View() string {
-  s := fmt.Sprintf(
-    "%s%s %s",
-    ansi.Color("run", "red+b"),
-    ansi.Color("me", "white+b"),
-    ansi.Color(m.version, "white+d"),
-  )
+	s := fmt.Sprintf(
+		"%s%s %s",
+		ansi.Color("run", "red+b"),
+		ansi.Color("me", "white+b"),
+		ansi.Color(m.version, "white+d"),
+	)
 
-  s += "\n\n"
+	s += "\n\n"
 
-  for i, block := range m.blocks {
-    active := i == m.cursor
-    _, expanded := m.expanded[i]
+	for i, block := range m.blocks {
+		active := i == *m.cursor
+		_, expanded := m.expanded[i]
 
-    line := " "
-    if active {
-      line = ">"
-    }
+		line := " "
+		if active {
+			line = ">"
+		}
 
-    line += " "
+		line += " "
 
-    {
-      name := block.Name()
-      lang := ansi.Color(block.Language(), "white+d")
+		{
+			name := block.Name()
+			lang := ansi.Color(block.Language(), "white+d")
 
-      if active {
-        name = ansi.Color(name, "white+b")
-      } else {
-        lang = ""
-      }
+			if active {
+				name = ansi.Color(name, "white+b")
+			} else {
+				lang = ""
+			}
 
-      identifier := fmt.Sprintf(
-        "%s %s",
-        name,
-        lang,
-      )
+			identifier := fmt.Sprintf(
+				"%s %s",
+				name,
+				lang,
+			)
 
-      line += identifier + "\n"
-    }
+			line += identifier + "\n"
+		}
 
-    codeLines := block.Lines()
+		codeLines := block.Lines()
 
-    for i, codeLine := range codeLines {
-      content := TAB + TAB + codeLine
+		for i, codeLine := range codeLines {
+			content := TAB + TAB + codeLine
 
-      if !expanded && len(codeLines) > 1 {
-        content += " (...)"
-      }
+			if !expanded && len(codeLines) > 1 {
+				content += " (...)"
+			}
 
-      content = ansi.Color(content, "white+d")
+			content = ansi.Color(content, "white+d")
 
-      if i >= 1 && !expanded {
-        break
-      }
+			if i >= 1 && !expanded {
+				break
+			}
 
-      line += content + "\n"
-    }
+			line += content + "\n"
+		}
 
-    s += line
-  }
+		s += line
+	}
 
-  s += "\n"
+	s += "\n"
 
-  {
-    help := strings.Join(
-      []string{
-        "Choose ↑↓←→",
-        "Run [Enter]",
-        "Expand [Space]",
-        "  by Stateful",
-      },
-      TAB,
-    )
+	{
+		help := strings.Join(
+			[]string{
+				"Choose ↑↓←→",
+				"Run [Enter]",
+				"Expand [Space]",
+				"Quit [^C]",
+				"  by Stateful",
+			},
+			TAB,
+		)
 
-    help = ansi.Color(help, "white+d")
+		help = ansi.Color(help, "white+d")
 
-    s += help
-  }
+		s += help
+	}
 
-  return s
+	return s
 }
 
 func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-  switch msg := msg.(type) {
-  case tea.KeyMsg: 
-    switch msg.String() {
-    case "ctrl+c", "q":
-      return m, tea.Quit
-    
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "q":
+			return m, tea.Quit
 
-    case "up", "k":
-      if m.cursor > 0 {
-          m.cursor--
-      }
+		case "up", "k":
+			if *m.cursor > 0 {
+				*m.cursor--
+			}
 
-    case "down", "j":
-      if m.cursor < len(m.blocks)-1 {
-          m.cursor++
-      }
+		case "down", "j":
+			if *m.cursor < len(m.blocks)-1 {
+				*m.cursor++
+			}
 
-    case " ":
-      if _, ok := m.expanded[m.cursor]; ok {
-        delete(m.expanded, m.cursor)
-      } else {
-        m.expanded[m.cursor] = struct{}{}
-      }
+		case " ":
+			if _, ok := m.expanded[*m.cursor]; ok {
+				delete(m.expanded, *m.cursor)
+			} else {
+				m.expanded[*m.cursor] = struct{}{}
+			}
 
-    case "enter", "l":
-      *m.run = m.blocks[m.cursor]
+		case "enter", "l":
+			*m.run = m.blocks[*m.cursor]
 
-      return m, tea.Quit
-    }
-  }
+			return m, tea.Quit
+		}
+	}
 
-  return m, nil
+	return m, nil
 }
 
-func tuiCmd() *cobra.Command {
-  return &cobra.Command {
-     Use: "tui",
-     Short: "Run the interactive TUI",
-     Long: "Run a command from a descriptive list given by an interactive TUI",
-     RunE: func(cmd *cobra.Command, args []string) error {
-       blocks, err := getCodeBlocks()
-       if err != nil {
-         return err
-       }
+func tuiCmd(exitAfterRun *bool) *cobra.Command {
+	cmd := cobra.Command{
+		Use:   "tui",
+		Short: "Run the interactive TUI",
+		Long:  "Run a command from a descriptive list given by an interactive TUI",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			blocks, err := getCodeBlocks()
+			if err != nil {
+				return err
+			}
 
-       version := "???"
+			version := "???"
 
-       bi, ok := debug.ReadBuildInfo()
-       if ok {
-         version = bi.Main.Version
-       }
+			bi, ok := debug.ReadBuildInfo()
+			if ok {
+				version = bi.Main.Version
+			}
 
-       block := (*document.CodeBlock)(nil)
+			cursor := 0
 
-       model := TUIModel {
-         blocks: blocks,
-         version: version,
-         expanded: make(map[int]struct{}),
-         run: &block,
-       }
+			for {
+				block := (*document.CodeBlock)(nil)
 
-       prog := tea.NewProgram(model)
-       if _, err := prog.Run(); err != nil {
-         return err
-       }
+				model := TUIModel{
+					blocks:   blocks,
+					version:  version,
+					expanded: make(map[int]struct{}),
+					run:      &block,
+					cursor:   &cursor,
+				}
 
-       if block != nil {
-         runBlockCmd(block, cmd, nil)
-       } else { }
+				prog := tea.NewProgram(model)
+				if _, err := prog.Run(); err != nil {
+					return err
+				}
 
-       return nil
-     },
-   }
+				if block != nil {
+					runBlockCmd(block, cmd, nil)
+				} else {
+					break
+				}
+
+				if cursor < len(blocks)-1 {
+					cursor++
+				}
+
+				if *exitAfterRun {
+					break
+				}
+			}
+
+			return nil
+		},
+	}
+
+	setDefaultFlags(&cmd)
+
+	cmd.Flags().BoolVar(exitAfterRun, "exit", false, "Exit runme TUI after running a command")
+
+	return &cmd
 }
 
 func (m TUIModel) Init() tea.Cmd {
-  return nil
+	return nil
 }
