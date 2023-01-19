@@ -222,11 +222,17 @@ func tuiCmd(
 					return err
 				}
 
+        err := error(nil)
+
 				if block != nil {
-					runBlockCmd(block, cmd, nil)
+					err = runBlockCmd(block, cmd, nil)
 				} else {
 					break
 				}
+
+        if err != nil {
+          fmt.Printf(ansi.Color("%v", "red") + "\n", err)
+        }
 
 				if cursor < len(blocks)-1 {
 					cursor++
