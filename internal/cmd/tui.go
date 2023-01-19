@@ -212,7 +212,11 @@ func tuiCmd(
 				}
 
         if !isInitialRun {
-          fmt.Print("\n")
+          _, err := fmt.Print("\n")
+
+          if err != nil {
+            return err
+          }
         }
 
         isInitialRun = false
@@ -231,7 +235,11 @@ func tuiCmd(
 				}
 
         if err != nil {
-          fmt.Printf(ansi.Color("%v", "red") + "\n", err)
+          _, err := fmt.Printf(ansi.Color("%v", "red") + "\n", err)
+
+          if err != nil {
+            return err
+          }
         }
 
 				if cursor < len(blocks)-1 {
