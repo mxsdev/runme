@@ -192,6 +192,7 @@ func tuiCmd(
 
 			cursor := 0
 			scroll := 0
+      isInitialRun := false
 
 			for {
 				block := (*document.CodeBlock)(nil)
@@ -209,6 +210,12 @@ func tuiCmd(
 					scroll:   &scroll,
           numEntries: *numEntries,
 				}
+
+        if !isInitialRun {
+          fmt.Print("\n")
+        }
+
+        isInitialRun = false
 
 				prog := tea.NewProgram(model)
 				if _, err := prog.Run(); err != nil {
