@@ -216,11 +216,7 @@ func tuiCmd(
 				}
 
 				if block != nil {
-					err := runBlockCmd(block, cmd, nil)
-
-					if err != nil {
-						return err
-					}
+					runBlockCmd(block, cmd, nil)
 				} else {
 					break
 				}
