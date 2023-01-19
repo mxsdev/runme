@@ -2,24 +2,55 @@ package cmd
 
 import (
 	"fmt"
+	"math"
 	"runtime/debug"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mgutz/ansi"
 	"github.com/spf13/cobra"
+	"github.com/stateful/runme/internal/cmd/util"
 	"github.com/stateful/runme/internal/document"
 )
 
 type tuiModel struct {
-	blocks   document.CodeBlocks
-	cursor   *int
-	expanded map[int]struct{}
-	version  string
-	run      **document.CodeBlock
+	blocks     document.CodeBlocks
+	cursor     *int
+	expanded   map[int]struct{}
+	version    string
+	run        **document.CodeBlock
+	numEntries int
+	scroll     *int
+}
+
+func (m *tuiModel) numBlocksShown() int {
+	return util.Min(len(m.blocks), m.numEntries)
+}
+
+func (m *tuiModel) maxScroll() int {
+  return len(m.blocks) - m.numBlocksShown()
+}
+
+func (m *tuiModel) scrollBy(delta int) {
+  *m.scroll = util.Clamp(
+    *m.scroll + delta,
+    0, m.maxScroll(),
+  )
+}
+
+func (m *tuiModel) moveCursor(delta int) {
+  *m.cursor = util.Clamp(
+    *m.cursor + delta,
+    0, len(m.blocks) - 1,
+  )
+
+  if *m.cursor < *m.scroll || *m.cursor >= *m.scroll + m.numBlocksShown() {
+    m.scrollBy(delta)
+  }
 }
 
 const tab = "  "
+const defaultNumEntries = 5
 
 func (m tuiModel) View() string {
 	s := fmt.Sprintf(
@@ -31,7 +62,9 @@ func (m tuiModel) View() string {
 
 	s += "\n\n"
 
-	for i, block := range m.blocks {
+  for i := *m.scroll; i < *m.scroll + m.numBlocksShown(); i++ {
+    block := m.blocks[i]
+
 		active := i == *m.cursor
 		_, expanded := m.expanded[i]
 
@@ -87,6 +120,7 @@ func (m tuiModel) View() string {
 	{
 		help := strings.Join(
 			[]string{
+        fmt.Sprintf("%v/%v", *m.cursor + 1, len(m.blocks)),
 				"Choose ↑↓←→",
 				"Run [Enter]",
 				"Expand [Space]",
@@ -113,14 +147,10 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "up", "k":
-			if *m.cursor > 0 {
-				*m.cursor--
-			}
+      m.moveCursor(-1)
 
 		case "down", "j":
-			if *m.cursor < len(m.blocks)-1 {
-				*m.cursor++
-			}
+      m.moveCursor(1)
 
 		case " ":
 			if _, ok := m.expanded[*m.cursor]; ok {
@@ -139,7 +169,10 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func tuiCmd(exitAfterRun *bool) *cobra.Command {
+func tuiCmd(
+  exitAfterRun *bool,
+  numEntries *int,
+) *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "tui",
 		Short: "Run the interactive TUI",
@@ -158,9 +191,14 @@ func tuiCmd(exitAfterRun *bool) *cobra.Command {
 			}
 
 			cursor := 0
+			scroll := 0
 
 			for {
 				block := (*document.CodeBlock)(nil)
+
+        if *numEntries <= 0 {
+          *numEntries = math.MaxInt32
+        }
 
 				model := tuiModel{
 					blocks:   blocks,
@@ -168,6 +206,8 @@ func tuiCmd(exitAfterRun *bool) *cobra.Command {
 					expanded: make(map[int]struct{}),
 					run:      &block,
 					cursor:   &cursor,
+					scroll:   &scroll,
+          numEntries: *numEntries,
 				}
 
 				prog := tea.NewProgram(model)
@@ -200,9 +240,18 @@ func tuiCmd(exitAfterRun *bool) *cobra.Command {
 
 	setDefaultFlags(&cmd)
 
-	cmd.Flags().BoolVar(exitAfterRun, "exit", false, "Exit runme TUI after running a command")
+  registerTuiCmdFlags(&cmd, exitAfterRun, numEntries)
 
 	return &cmd
+}
+
+func registerTuiCmdFlags(
+  cmd *cobra.Command,
+  exitAfterRun *bool,
+  numEntries *int,
+) {
+	cmd.Flags().BoolVar(exitAfterRun, "exit", false, "Exit runme TUI after running a command")
+  cmd.Flags().IntVar(numEntries, "entries", defaultNumEntries, "Number of entries to show in TUI")
 }
 
 func (m tuiModel) Init() tea.Cmd {

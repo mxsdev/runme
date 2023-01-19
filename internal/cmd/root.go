@@ -17,7 +17,8 @@ var (
 
 func Root() *cobra.Command {
 	exitAfterRun := false
-	defaultCmd := tuiCmd(&exitAfterRun)
+  numEntries := defaultNumEntries
+	defaultCmd := tuiCmd(&exitAfterRun, &numEntries)
 
 	cmd := cobra.Command{
 		Use:           "runme",
@@ -54,7 +55,7 @@ func Root() *cobra.Command {
 	pflags.StringVar(&fChdir, "chdir", getCwd(), "Switch to a different working directory before exeucing the command.")
 	pflags.StringVar(&fFileName, "filename", "README.md", "A name of the README file.")
 
-	cmd.Flags().BoolVar(&exitAfterRun, "exit", false, "Exit runme TUI after running a command")
+  registerTuiCmdFlags(&cmd, &exitAfterRun, &numEntries)
 
 	cmd.AddCommand(defaultCmd) // TUI
 	cmd.AddCommand(runCmd())
