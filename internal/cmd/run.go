@@ -18,12 +18,12 @@ import (
 )
 
 type runCmdOpts struct {
-		dryRun         bool
-		replaceScripts []string
+	dryRun         bool
+	replaceScripts []string
 }
 
 func runCmd() *cobra.Command {
-  var opts = runCmdOpts{}
+	opts := runCmdOpts{}
 
 	cmd := cobra.Command{
 		Use:               "run",
@@ -38,12 +38,12 @@ func runCmd() *cobra.Command {
 				return err
 			}
 
-      block, err := lookupCodeBlock(blocks, args[0])
-      if err != nil {
-        return err
-      }
+			block, err := lookupCodeBlock(blocks, args[0])
+			if err != nil {
+				return err
+			}
 
-      return runBlockCmd(block, cmd, &opts)
+			return runBlockCmd(block, cmd, &opts)
 		},
 	}
 
@@ -56,32 +56,32 @@ func runCmd() *cobra.Command {
 }
 
 func runBlockCmd(block *document.CodeBlock, cmd *cobra.Command, opts *runCmdOpts) error {
-  if opts == nil {
-    opts = &runCmdOpts{}
-  }
+	if opts == nil {
+		opts = &runCmdOpts{}
+	}
 
-  if err := replace(opts.replaceScripts, block.Lines()); err != nil {
-    return err
-  }
+	if err := replace(opts.replaceScripts, block.Lines()); err != nil {
+		return err
+	}
 
-  if id, ok := shellID(); ok && runner.IsShell(block) {
-    return executeInShell(id, block)
-  }
+	if id, ok := shellID(); ok && runner.IsShell(block) {
+		return executeInShell(id, block)
+	}
 
-  executable, err := newExecutable(cmd, block)
-  if err != nil {
-    return err
-  }
+	executable, err := newExecutable(cmd, block)
+	if err != nil {
+		return err
+	}
 
-  ctx, cancel := ctxWithSigCancel(cmd.Context())
-  defer cancel()
+	ctx, cancel := ctxWithSigCancel(cmd.Context())
+	defer cancel()
 
-  if opts.dryRun {
-    executable.DryRun(ctx, cmd.ErrOrStderr())
-    return nil
-  }
+	if opts.dryRun {
+		executable.DryRun(ctx, cmd.ErrOrStderr())
+		return nil
+	}
 
-  return errors.WithStack(executable.Run(ctx))
+	return errors.WithStack(executable.Run(ctx))
 }
 
 func newExecutable(cmd *cobra.Command, block *document.CodeBlock) (runner.Executable, error) {

@@ -17,6 +17,5 @@ func Max[T constraints.Ordered](a, b T) T {
 }
 
 func Clamp[T constraints.Ordered](x, a, b T) T {
-  return Min(b, Max(a, x))
+	return Min(b, Max(a, x))
 }
-

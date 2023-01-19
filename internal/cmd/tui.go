@@ -28,29 +28,31 @@ func (m *tuiModel) numBlocksShown() int {
 }
 
 func (m *tuiModel) maxScroll() int {
-  return len(m.blocks) - m.numBlocksShown()
+	return len(m.blocks) - m.numBlocksShown()
 }
 
 func (m *tuiModel) scrollBy(delta int) {
-  *m.scroll = util.Clamp(
-    *m.scroll + delta,
-    0, m.maxScroll(),
-  )
+	*m.scroll = util.Clamp(
+		*m.scroll+delta,
+		0, m.maxScroll(),
+	)
 }
 
 func (m *tuiModel) moveCursor(delta int) {
-  *m.cursor = util.Clamp(
-    *m.cursor + delta,
-    0, len(m.blocks) - 1,
-  )
+	*m.cursor = util.Clamp(
+		*m.cursor+delta,
+		0, len(m.blocks)-1,
+	)
 
-  if *m.cursor < *m.scroll || *m.cursor >= *m.scroll + m.numBlocksShown() {
-    m.scrollBy(delta)
-  }
+	if *m.cursor < *m.scroll || *m.cursor >= *m.scroll+m.numBlocksShown() {
+		m.scrollBy(delta)
+	}
 }
 
-const tab = "  "
-const defaultNumEntries = 5
+const (
+	tab               = "  "
+	defaultNumEntries = 5
+)
 
 func (m tuiModel) View() string {
 	s := fmt.Sprintf(
@@ -62,8 +64,8 @@ func (m tuiModel) View() string {
 
 	s += "\n\n"
 
-  for i := *m.scroll; i < *m.scroll + m.numBlocksShown(); i++ {
-    block := m.blocks[i]
+	for i := *m.scroll; i < *m.scroll+m.numBlocksShown(); i++ {
+		block := m.blocks[i]
 
 		active := i == *m.cursor
 		_, expanded := m.expanded[i]
@@ -120,7 +122,7 @@ func (m tuiModel) View() string {
 	{
 		help := strings.Join(
 			[]string{
-        fmt.Sprintf("%v/%v", *m.cursor + 1, len(m.blocks)),
+				fmt.Sprintf("%v/%v", *m.cursor+1, len(m.blocks)),
 				"Choose ↑↓←→",
 				"Run [Enter]",
 				"Expand [Space]",
@@ -147,10 +149,10 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "up", "k":
-      m.moveCursor(-1)
+			m.moveCursor(-1)
 
 		case "down", "j":
-      m.moveCursor(1)
+			m.moveCursor(1)
 
 		case " ":
 			if _, ok := m.expanded[*m.cursor]; ok {
@@ -170,8 +172,8 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func tuiCmd(
-  exitAfterRun *bool,
-  numEntries *int,
+	exitAfterRun *bool,
+	numEntries *int,
 ) *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "tui",
@@ -192,41 +194,40 @@ func tuiCmd(
 
 			cursor := 0
 			scroll := 0
-      isInitialRun := false
+			isInitialRun := false
 
 			for {
 				block := (*document.CodeBlock)(nil)
 
-        if *numEntries <= 0 {
-          *numEntries = math.MaxInt32
-        }
-
-				model := tuiModel{
-					blocks:   blocks,
-					version:  version,
-					expanded: make(map[int]struct{}),
-					run:      &block,
-					cursor:   &cursor,
-					scroll:   &scroll,
-          numEntries: *numEntries,
+				if *numEntries <= 0 {
+					*numEntries = math.MaxInt32
 				}
 
-        if !isInitialRun {
-          _, err := fmt.Print("\n")
+				model := tuiModel{
+					blocks:     blocks,
+					version:    version,
+					expanded:   make(map[int]struct{}),
+					run:        &block,
+					cursor:     &cursor,
+					scroll:     &scroll,
+					numEntries: *numEntries,
+				}
 
-          if err != nil {
-            return err
-          }
-        }
+				if !isInitialRun {
+					_, err := fmt.Print("\n")
+					if err != nil {
+						return err
+					}
+				}
 
-        isInitialRun = false
+				isInitialRun = false
 
 				prog := tea.NewProgram(model)
 				if _, err := prog.Run(); err != nil {
 					return err
 				}
 
-        err := error(nil)
+				err := error(nil)
 
 				if block != nil {
 					err = runBlockCmd(block, cmd, nil)
@@ -234,13 +235,12 @@ func tuiCmd(
 					break
 				}
 
-        if err != nil {
-          _, err := fmt.Printf(ansi.Color("%v", "red") + "\n", err)
-
-          if err != nil {
-            return err
-          }
-        }
+				if err != nil {
+					_, err := fmt.Printf(ansi.Color("%v", "red")+"\n", err)
+					if err != nil {
+						return err
+					}
+				}
 
 				if cursor < len(blocks)-1 {
 					cursor++
@@ -257,18 +257,18 @@ func tuiCmd(
 
 	setDefaultFlags(&cmd)
 
-  registerTuiCmdFlags(&cmd, exitAfterRun, numEntries)
+	registerTuiCmdFlags(&cmd, exitAfterRun, numEntries)
 
 	return &cmd
 }
 
 func registerTuiCmdFlags(
-  cmd *cobra.Command,
-  exitAfterRun *bool,
-  numEntries *int,
+	cmd *cobra.Command,
+	exitAfterRun *bool,
+	numEntries *int,
 ) {
 	cmd.Flags().BoolVar(exitAfterRun, "exit", false, "Exit runme TUI after running a command")
-  cmd.Flags().IntVar(numEntries, "entries", defaultNumEntries, "Number of entries to show in TUI")
+	cmd.Flags().IntVar(numEntries, "entries", defaultNumEntries, "Number of entries to show in TUI")
 }
 
 func (m tuiModel) Init() tea.Cmd {
