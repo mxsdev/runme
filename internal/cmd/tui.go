@@ -15,12 +15,17 @@ import (
 
 type tuiModel struct {
 	blocks     document.CodeBlocks
-	cursor     *int
 	expanded   map[int]struct{}
 	version    string
-	run        **document.CodeBlock
 	numEntries int
-	scroll     *int
+	cursor     int
+	scroll     int
+	result     tuiResult
+}
+
+type tuiResult struct {
+	run  *document.CodeBlock
+	exit bool
 }
 
 func (m *tuiModel) numBlocksShown() int {
@@ -32,19 +37,19 @@ func (m *tuiModel) maxScroll() int {
 }
 
 func (m *tuiModel) scrollBy(delta int) {
-	*m.scroll = util.Clamp(
-		*m.scroll+delta,
+	m.scroll = util.Clamp(
+		m.scroll+delta,
 		0, m.maxScroll(),
 	)
 }
 
 func (m *tuiModel) moveCursor(delta int) {
-	*m.cursor = util.Clamp(
-		*m.cursor+delta,
+	m.cursor = util.Clamp(
+		m.cursor+delta,
 		0, len(m.blocks)-1,
 	)
 
-	if *m.cursor < *m.scroll || *m.cursor >= *m.scroll+m.numBlocksShown() {
+	if m.cursor < m.scroll || m.cursor >= m.scroll+m.numBlocksShown() {
 		m.scrollBy(delta)
 	}
 }
@@ -64,10 +69,10 @@ func (m tuiModel) View() string {
 
 	s += "\n\n"
 
-	for i := *m.scroll; i < *m.scroll+m.numBlocksShown(); i++ {
+	for i := m.scroll; i < m.scroll+m.numBlocksShown(); i++ {
 		block := m.blocks[i]
 
-		active := i == *m.cursor
+		active := i == m.cursor
 		_, expanded := m.expanded[i]
 
 		line := " "
@@ -122,7 +127,7 @@ func (m tuiModel) View() string {
 	{
 		help := strings.Join(
 			[]string{
-				fmt.Sprintf("%v/%v", *m.cursor+1, len(m.blocks)),
+				fmt.Sprintf("%v/%v", m.cursor+1, len(m.blocks)),
 				"Choose ↑↓←→",
 				"Run [Enter]",
 				"Expand [Space]",
@@ -146,6 +151,10 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if isKeyPress {
 		switch keyMsg.String() {
 		case "ctrl+c", "q":
+			m.result = tuiResult{
+				exit: true,
+			}
+
 			return m, tea.Quit
 
 		case "up", "k":
@@ -155,14 +164,16 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.moveCursor(1)
 
 		case " ":
-			if _, ok := m.expanded[*m.cursor]; ok {
-				delete(m.expanded, *m.cursor)
+			if _, ok := m.expanded[m.cursor]; ok {
+				delete(m.expanded, m.cursor)
 			} else {
-				m.expanded[*m.cursor] = struct{}{}
+				m.expanded[m.cursor] = struct{}{}
 			}
 
 		case "enter", "l":
-			*m.run = m.blocks[*m.cursor]
+			m.result = tuiResult{
+				run: m.blocks[m.cursor],
+			}
 
 			return m, tea.Quit
 		}
@@ -192,63 +203,46 @@ func tuiCmd(
 				version = bi.Main.Version
 			}
 
-			cursor := 0
-			scroll := 0
-			isInitialRun := false
+			model := tuiModel{
+				blocks:     blocks,
+				version:    version,
+				expanded:   make(map[int]struct{}),
+				numEntries: *numEntries,
+			}
 
 			for {
-				block := (*document.CodeBlock)(nil)
-
 				if *numEntries <= 0 {
 					*numEntries = math.MaxInt32
 				}
 
-				model := tuiModel{
-					blocks:     blocks,
-					version:    version,
-					expanded:   make(map[int]struct{}),
-					run:        &block,
-					cursor:     &cursor,
-					scroll:     &scroll,
-					numEntries: *numEntries,
-				}
-
-				if !isInitialRun {
-					_, err := fmt.Print("\n")
-					if err != nil {
-						return err
-					}
-				}
-
-				isInitialRun = false
-
 				prog := tea.NewProgram(model)
-				if _, err := prog.Run(); err != nil {
+				if newModel, err := prog.Run(); err != nil {
 					return err
+				} else {
+					model = newModel.(tuiModel)
 				}
 
-				err := error(nil)
+				result := model.result
 
-				if block != nil {
-					err = runBlockCmd(block, cmd, nil)
+				if result.run != nil {
+					if err = runBlockCmd(result.run, cmd, nil); err != nil {
+						if _, err := fmt.Printf(ansi.Color("%v", "red")+"\n", err); err != nil {
+							return err
+						}
+					}
 				} else {
 					break
 				}
 
-				if err != nil {
-					_, err := fmt.Printf(ansi.Color("%v", "red")+"\n", err)
-					if err != nil {
-						return err
-					}
-				}
-
-				if cursor < len(blocks)-1 {
-					cursor++
-				}
-
-				if *exitAfterRun {
+				if *exitAfterRun || result.exit {
 					break
 				}
+
+				if _, err := fmt.Print("\n"); err != nil {
+					return err
+				}
+
+				model.moveCursor(1)
 			}
 
 			return nil
