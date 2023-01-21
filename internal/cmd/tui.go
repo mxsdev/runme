@@ -182,10 +182,10 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func tuiCmd(
-	exitAfterRun *bool,
-	numEntries *int,
-) *cobra.Command {
+func tuiCmd() *cobra.Command {
+	numEntries := 5
+	exitAfterRun := false
+
 	cmd := cobra.Command{
 		Use:   "tui",
 		Short: "Run the interactive TUI",
@@ -207,12 +207,12 @@ func tuiCmd(
 				blocks:     blocks,
 				version:    version,
 				expanded:   make(map[int]struct{}),
-				numEntries: *numEntries,
+				numEntries: numEntries,
 			}
 
 			for {
-				if *numEntries <= 0 {
-					*numEntries = math.MaxInt32
+				if numEntries <= 0 {
+					numEntries = math.MaxInt32
 				}
 
 				prog := tea.NewProgram(model)
@@ -234,7 +234,7 @@ func tuiCmd(
 					break
 				}
 
-				if *exitAfterRun || result.exit {
+				if exitAfterRun || result.exit {
 					break
 				}
 
@@ -251,18 +251,10 @@ func tuiCmd(
 
 	setDefaultFlags(&cmd)
 
-	registerTuiCmdFlags(&cmd, exitAfterRun, numEntries)
+	cmd.Flags().BoolVar(&exitAfterRun, "exit", false, "Exit runme TUI after running a command")
+	cmd.Flags().IntVar(&numEntries, "entries", defaultNumEntries, "Number of entries to show in TUI")
 
 	return &cmd
-}
-
-func registerTuiCmdFlags(
-	cmd *cobra.Command,
-	exitAfterRun *bool,
-	numEntries *int,
-) {
-	cmd.Flags().BoolVar(exitAfterRun, "exit", false, "Exit runme TUI after running a command")
-	cmd.Flags().IntVar(numEntries, "entries", defaultNumEntries, "Number of entries to show in TUI")
 }
 
 func (m tuiModel) Init() tea.Cmd {

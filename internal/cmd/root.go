@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 var (
@@ -16,10 +17,6 @@ var (
 )
 
 func Root() *cobra.Command {
-	exitAfterRun := false
-	numEntries := defaultNumEntries
-	defaultCmd := tuiCmd(&exitAfterRun, &numEntries)
-
 	cmd := cobra.Command{
 		Use:           "runme",
 		Short:         "Execute commands directly from a README",
@@ -42,9 +39,6 @@ func Root() *cobra.Command {
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return defaultCmd.RunE(cmd, args)
-		},
 	}
 
 	setDefaultFlags(&cmd)
@@ -55,9 +49,16 @@ func Root() *cobra.Command {
 	pflags.StringVar(&fChdir, "chdir", getCwd(), "Switch to a different working directory before exeucing the command.")
 	pflags.StringVar(&fFileName, "filename", "README.md", "A name of the README file.")
 
-	registerTuiCmdFlags(&cmd, &exitAfterRun, &numEntries)
+	tuiCmd := tuiCmd()
+	cmd.RunE = tuiCmd.RunE
 
-	cmd.AddCommand(defaultCmd) // TUI
+	tuiCmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if flag := cmd.Flags().Lookup(f.Name); flag == nil {
+			cmd.Flags().AddFlag(f)
+		}
+	})
+
+	cmd.AddCommand(tuiCmd)
 	cmd.AddCommand(runCmd())
 	cmd.AddCommand(listCmd())
 	cmd.AddCommand(printCmd())
