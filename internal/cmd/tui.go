@@ -203,6 +203,10 @@ func tuiCmd() *cobra.Command {
 				version = bi.Main.Version
 			}
 
+			if numEntries <= 0 {
+				numEntries = math.MaxInt32
+			}
+
 			model := tuiModel{
 				blocks:     blocks,
 				version:    version,
@@ -211,10 +215,6 @@ func tuiCmd() *cobra.Command {
 			}
 
 			for {
-				if numEntries <= 0 {
-					numEntries = math.MaxInt32
-				}
-
 				prog := tea.NewProgram(model)
 				if newModel, err := prog.Run(); err != nil {
 					return err
