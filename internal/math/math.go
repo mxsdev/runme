@@ -1,4 +1,4 @@
-package util
+package math
 
 import "golang.org/x/exp/constraints"
 

@@ -2,15 +2,15 @@ package cmd
 
 import (
 	"fmt"
-	"math"
+	goMath "math"
 	"runtime/debug"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mgutz/ansi"
 	"github.com/spf13/cobra"
-	"github.com/stateful/runme/internal/cmd/util"
 	"github.com/stateful/runme/internal/document"
+	"github.com/stateful/runme/internal/math"
 )
 
 type tuiModel struct {
@@ -29,7 +29,7 @@ type tuiResult struct {
 }
 
 func (m *tuiModel) numBlocksShown() int {
-	return util.Min(len(m.blocks), m.numEntries)
+	return math.Min(len(m.blocks), m.numEntries)
 }
 
 func (m *tuiModel) maxScroll() int {
@@ -37,14 +37,14 @@ func (m *tuiModel) maxScroll() int {
 }
 
 func (m *tuiModel) scrollBy(delta int) {
-	m.scroll = util.Clamp(
+	m.scroll = math.Clamp(
 		m.scroll+delta,
 		0, m.maxScroll(),
 	)
 }
 
 func (m *tuiModel) moveCursor(delta int) {
-	m.cursor = util.Clamp(
+	m.cursor = math.Clamp(
 		m.cursor+delta,
 		0, len(m.blocks)-1,
 	)
@@ -204,7 +204,7 @@ func tuiCmd() *cobra.Command {
 			}
 
 			if numEntries <= 0 {
-				numEntries = math.MaxInt32
+				numEntries = goMath.MaxInt32
 			}
 
 			model := tuiModel{
