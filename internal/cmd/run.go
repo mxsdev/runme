@@ -43,7 +43,7 @@ func runCmd() *cobra.Command {
 				return err
 			}
 
-			return runBlockCmd(block, cmd, &opts)
+			return runBlock(cmd, block, &opts)
 		},
 	}
 
@@ -55,7 +55,7 @@ func runCmd() *cobra.Command {
 	return &cmd
 }
 
-func runBlockCmd(block *document.CodeBlock, cmd *cobra.Command, opts *runCmdOpts) error {
+func runBlock(cmd *cobra.Command, block *document.CodeBlock, opts *runCmdOpts) error {
 	if opts == nil {
 		opts = &runCmdOpts{}
 	}
