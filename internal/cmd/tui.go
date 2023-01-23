@@ -225,14 +225,14 @@ func tuiCmd() *cobra.Command {
 				model = newModel.(tuiModel)
 				result := model.result
 
-				if result.run != nil {
-					if err = runBlock(cmd, result.run, nil); err != nil {
-						if _, err := fmt.Printf(ansi.Color("%v", "red")+"\n", err); err != nil {
-							return err
-						}
-					}
-				} else {
+				if result.run == nil {
 					break
+				}
+
+				if err = runBlock(cmd, result.run, nil); err != nil {
+					if _, err := fmt.Printf(ansi.Color("%v", "red")+"\n", err); err != nil {
+						return err
+					}
 				}
 
 				if exitAfterRun || result.exit {
